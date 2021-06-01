@@ -1,0 +1,43 @@
+apiVersion: rabbitmq.com/v1beta1
+kind: RabbitmqCluster
+metadata:
+  name: mtls1-3-inter-node
+  namespace: default
+spec:
+  image: rabbitmq@sha256:dc42782bc9df5623aef7183b7977c0ed8a1cb73cfca02b6564e8d0d00b981e7a # rabbitmq:3.8.16-management with Erlang 24.0.1
+  rabbitmq:
+    envConfig: |
+      SERVER_ADDITIONAL_ERL_ARGS="-proto_dist inet_tls -ssl_dist_optfile /etc/rabbitmq/inter-node-tls.config"
+      RABBITMQ_CTL_ERL_ARGS="-proto_dist inet_tls -ssl_dist_optfile /etc/rabbitmq/inter-node-tls.config"
+  replicas: 1
+  override:
+    statefulSet:
+      spec:
+        template:
+          spec:
+            containers:
+            - name: rabbitmq
+              volumeMounts:
+              - mountPath: /etc/rabbitmq/certs
+                name: mtls-inter-node-nodes-tls
+              - mountPath: /etc/rabbitmq/inter-node-tls.config
+                name: inter-node-config
+                subPath: inter_node_tls1_3.config
+            volumes:
+            - configMap:
+                defaultMode: 420
+                name: mtls-inter-node-tls-config
+              name: inter-node-config
+            - name: mtls-inter-node-nodes-tls
+              secret:
+                secretName: mtls-inter-node-nodes-tls
+                items:
+                - key: ca.crt
+                  mode: 416
+                  path: ca.crt
+                - key: tls.crt
+                  mode: 416
+                  path: tls.crt
+                - key: tls.key
+                  mode: 416
+                  path: tls.key
